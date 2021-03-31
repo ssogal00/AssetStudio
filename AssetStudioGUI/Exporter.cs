@@ -9,8 +9,57 @@ using TGASharpLib;
 
 namespace AssetStudioGUI
 {
-    internal static class Exporter
+    public static class Exporter
     {
+        public static bool ExportTexture2D(Texture2D item, string exportPath)
+        {
+            var m_Texture2D = item;
+            if (Properties.Settings.Default.convertTexture)
+            {
+                var bitmap = m_Texture2D.ConvertToBitmap(true);
+                if (bitmap == null)
+                    return false;
+                ImageFormat format = null;
+                var ext = Properties.Settings.Default.convertType;
+                bool tga = false;
+                switch (ext)
+                {
+                    case "BMP":
+                        format = ImageFormat.Bmp;
+                        break;
+                    case "PNG":
+                        format = ImageFormat.Png;
+                        break;
+                    case "JPEG":
+                        format = ImageFormat.Jpeg;
+                        break;
+                    case "TGA":
+                        tga = true;
+                        break;
+                }
+                if (!TryExportFile(exportPath, item.m_Name, "." + ext.ToLower(), out var exportFullPath))
+                    return false;
+                if (tga)
+                {
+                    var file = new TGA(bitmap);
+                    file.Save(exportFullPath);
+                }
+                else
+                {
+                    bitmap.Save(exportFullPath, format);
+                }
+                bitmap.Dispose();
+                return true;
+            }
+            else
+            {
+                if (!TryExportFile(exportPath, item.m_Name, ".tex", out var exportFullPath))
+                    return false;
+                File.WriteAllBytes(exportFullPath, m_Texture2D.image_data.GetData());
+                return true;
+            }
+        }
+
         public static bool ExportTexture2D(AssetItem item, string exportPath)
         {
             var m_Texture2D = (Texture2D)item.Asset;
@@ -308,6 +357,24 @@ namespace AssetStudioGUI
                 return true;
             }
             fullPath = Path.Combine(dir, fileName + item.UniqueID + extension);
+            if (!File.Exists(fullPath))
+            {
+                Directory.CreateDirectory(dir);
+                return true;
+            }
+            return false;
+        }
+
+        private static bool TryExportFile(string dir, string filename, string extension, out string fullPath)
+        {
+            var fixedFileName = FixFileName(filename);
+            fullPath = Path.Combine(dir, fixedFileName + extension);
+            if (!File.Exists(fullPath))
+            {
+                Directory.CreateDirectory(dir);
+                return true;
+            }
+            fullPath = Path.Combine(dir, fixedFileName + extension);
             if (!File.Exists(fullPath))
             {
                 Directory.CreateDirectory(dir);
